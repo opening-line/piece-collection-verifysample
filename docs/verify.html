@@ -48,6 +48,9 @@
         .then(response => response.json())
         .then(data => {
             console.log(data);
+            console.log(data.create_timestamp);
+            console.log(Math.floor(Date.now() / 1000) - 600);
+            
             if (data.result === "ok" && data.create_timestamp >= Math.floor(Date.now() / 1000) - 600) {
                 resultElement.textContent = 'OK';
                 resultElement.style.backgroundColor = 'green';
