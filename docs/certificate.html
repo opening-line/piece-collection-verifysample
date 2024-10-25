@@ -19,7 +19,7 @@
       <span class="close-modal">&times;</span>
       <h2 id="modal-title"></h2>
       <div class="target-id-container">
-        <span>Target ID: </span>
+        <span>証明書ID: </span>
         <span id="modal-target-id"></span>
         <button class="copy-button">コピー</button>
       </div>
@@ -62,7 +62,7 @@
       copyButton.click(() => {
         const targetId = $('#modal-target-id').text();
         navigator.clipboard.writeText(targetId).then(() => {
-          alert('Target ID をコピーしました');
+          alert('証明書ID をコピーしました');
         });
       });
 
