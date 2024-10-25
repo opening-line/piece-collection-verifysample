@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>証明書一覧</title>
   <link rel="stylesheet" type="text/css" href="certificate-base.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
   <div class="container">
@@ -25,6 +26,10 @@
       </div>
       <img id="modal-image" class="modal-image" src="" alt="">
       <p id="modal-description"></p>
+      <div class="qrcode-container">
+        <div id="qrcode"></div>
+        <p class="qrcode-description">端末のカメラにてQRコードを読み取ると、証明書の保有を確認できます。</p>
+      </div>
     </div>
   </div>
 
@@ -71,6 +76,21 @@
         $('#modal-target-id').text(data.targetId);
         $('#modal-image').attr('src', data.image);
         $('#modal-description').text(data.description);
+        
+        // QRコードの生成
+        const currentTimestamp = Math.floor(Date.now() / 1000);
+        const qrCodeUrl = `https://p-coll.com/verify/${data.targetId}?payload={"mosaic_id":"${data.targetId}","verifier":"OpeningLine","create_timestamp":${currentTimestamp}}&callback_url=https://opening-line.github.io/piece-collection-verifysample/verify.html`;
+        
+        // 既存のQRコードがあれば削除
+        $('#qrcode').empty();
+        
+        // 新しいQRコードを生成
+        new QRCode(document.getElementById("qrcode"), {
+          text: qrCodeUrl,
+          width: 256,
+          height: 256
+        });
+
         modal.show();
         $('body').addClass('modal-open');
       }
