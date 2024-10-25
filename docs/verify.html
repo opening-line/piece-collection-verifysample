@@ -18,6 +18,9 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            width: 80%;
+            max-width: 600px;
+            padding: 0 20px;
         }
         #result {
             font-size: 24px;
@@ -94,7 +97,7 @@
 
                 const pieceCollectionJson = JSON.parse(pieceCollectionParam);
                 if (!pieceCollectionJson.pub_key) {
-                    errorMessageElement.textContent = 'ピースコレクションのアカウントがブラウザにありません。';
+                    errorMessageElement.textContent = 'このブラウザ内にはピースコレクションのアカウントがありません。';
                 } else{
                     errorMessageElement.textContent = '証明書を保有していません。';
                 }
