@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>証明書一覧</title>
+  <link rel="stylesheet" type="text/css" href="certificate-base.css">
+</head>
+<body>
+  <div class="container">
+    <div class="card-grid"></div>
+    <button class="load-more">さらに読み込む</button>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal">
+    <div class="modal-content">
+      <span class="close-modal">&times;</span>
+      <h2 id="modal-title"></h2>
+      <div class="target-id-container">
+        <span>Target ID: </span>
+        <span id="modal-target-id"></span>
+        <button class="copy-button">コピー</button>
+      </div>
+      <img id="modal-image" class="modal-image" src="" alt="">
+      <p id="modal-description"></p>
+    </div>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.7.1.js" integrity="sha256-eKhayi8LEQwp4NKxN+CfCh+3qOVUtJn3QNZ0TciWLP4=" crossorigin="anonymous"></script>
+  <script type="module">
+    $(async function(){
+      const SDK_VERSION = "3.2.2";
+      const NODE = "https://sym-main-appgw.opening-line.jp:3001";
+      const MAIN_ADDRESS = "NC2MGJNTF6W2C7Q6HNNOTRN4JWB42JOQGCSBUOA";
+      const sdk = await import(`https://www.unpkg.com/symbol-sdk@${SDK_VERSION}/dist/bundle.web.js`);
+      const sdkCore = sdk.core;
+      const sdkSymbol = sdk.symbol;
+      const utf8decoder = new TextDecoder();
+      let pageNumber = 1;
+      let pageSize = 25;
+      let isLoading = false;
+
+      // Modal関連の処理
+      const modal = $('.modal');
+      const closeModal = $('.close-modal');
+      const copyButton = $('.copy-button');
+
+      closeModal.click(() => {
+        modal.hide();
+        $('body').removeClass('modal-open');
+      });
+
+      $(window).click((event) => {
+        if ($(event.target).is(modal)) {
+          modal.hide();
+          $('body').removeClass('modal-open');
+        }
+      });
+
+      copyButton.click(() => {
+        const targetId = $('#modal-target-id').text();
+        navigator.clipboard.writeText(targetId).then(() => {
+          alert('Target ID をコピーしました');
+        });
+      });
+
+      function showModal(data) {
+        $('#modal-title').text(data.name);
+        $('#modal-target-id').text(data.targetId);
+        $('#modal-image').attr('src', data.image);
+        $('#modal-description').text(data.description);
+        modal.show();
+        $('body').addClass('modal-open');
+      }
+
+      // メタデータを処理して結合する関数
+      function processMetadata(metadataArray) {
+        const resultMap = new Map();
+
+        metadataArray.forEach(metadata => {
+          metadata.data.forEach(item => {
+            const targetId = item.metadataEntry.targetId;
+            if (!resultMap.has(targetId)) {
+              resultMap.set(targetId, []);
+            }
+            resultMap.get(targetId).push(item);
+          });
+        });
+
+        const result = [];
+        resultMap.forEach(items => {
+          result.push(...items);
+        });
+        return result;
+      }
+
+      function reformatMetadata(metadataList) {
+        const processedData = processMetadata(metadataList);
+        return processedData.sort((a, b) =>
+          a.metadataEntry.targetId.localeCompare(b.metadataEntry.targetId)
+        );
+      }
+
+      function createCards(formattedData) {
+        const groupedData = new Map();
+        formattedData.forEach(item => {
+          const targetId = item.metadataEntry.targetId;
+          if (!groupedData.has(targetId)) {
+            groupedData.set(targetId, { targetId });
+          }
+          const metadataKey = item.metadataEntry.scopedMetadataKey;
+          switch (metadataKey) {
+            case '9E0317B2A9112EFF':
+              groupedData.get(targetId).name = utf8decoder.decode(sdkCore.utils.hexToUint8(item.metadataEntry.value));
+              break;
+            case 'E286DE93DF07FD18':
+              groupedData.get(targetId).description = utf8decoder.decode(sdkCore.utils.hexToUint8(item.metadataEntry.value));
+              break;
+            case 'BF0CC7A97EE003E2':
+              groupedData.get(targetId).image = utf8decoder.decode(sdkCore.utils.hexToUint8(item.metadataEntry.value));
+              break;
+          }
+        });
+
+        groupedData.forEach((data, targetId) => {
+          if (data.name && data.description && data.image) {
+            const cardHtml = `
+              <div class="card" data-target-id="${targetId}">
+                <div class="card-image-container">
+                  <img src="${data.image}" alt="${data.name}" class="card-image">
+                  <div class="card-overlay">
+                    <h2 class="card-title">${data.name}</h2>
+                  </div>
+                </div>
+                <div class="card-content">
+                  <p class="card-description">${data.description}</p>
+                </div>
+              </div>
+            `;
+            $('.card-grid').append(cardHtml);
+          }
+        });
+
+        // カードクリックイベントの設定
+        $('.card').click(function() {
+          const targetId = $(this).data('target-id');
+          const data = groupedData.get(targetId);
+          showModal(data);
+        });
+      }
+
+      async function getMosaicList(pageNumber, pageSize) {
+        try {
+          const namePromise = $.ajax({
+            url: new URL(
+              `/metadata?targetAddress=${MAIN_ADDRESS}&scopedMetadataKey=9E0317B2A9112EFF&metadataType=1&pageSize=${pageSize}&pageNumber=${pageNumber}`,
+              NODE
+            )
+          });
+
+          const descriptionPromise = $.ajax({
+            url: new URL(
+              `/metadata?targetAddress=${MAIN_ADDRESS}&scopedMetadataKey=E286DE93DF07FD18&metadataType=1&pageSize=${pageSize}&pageNumber=${pageNumber}`,
+              NODE
+            )
+          });
+
+          const imagePromise = $.ajax({
+            url: new URL(
+              `/metadata?targetAddress=${MAIN_ADDRESS}&scopedMetadataKey=BF0CC7A97EE003E2&metadataType=1&pageSize=${pageSize}&pageNumber=${pageNumber}`,
+              NODE
+            )
+          });
+
+          const imageHashPromise = $.ajax({
+            url: new URL(
+              `/metadata?targetAddress=${MAIN_ADDRESS}&scopedMetadataKey=CBD4392A49EBB74A&metadataType=1&pageSize=${pageSize}&pageNumber=${pageNumber}`,
+              NODE
+            )
+          });
+
+          return await Promise.all([namePromise, descriptionPromise, imagePromise, imageHashPromise]);
+        } catch (error) {
+          console.error('Failed to fetch metadata:', error);
+          throw error;
+        }
+      }
+
+      // 続きを読み込む処理
+      $('.load-more').click(async () => {
+        if (isLoading) return;
+
+        isLoading = true;
+        pageNumber++;
+
+        try {
+          const metadataList = await getMosaicList(pageNumber, pageSize);
+          const formattedData = reformatMetadata(metadataList);
+          createCards(formattedData);
+        } catch (error) {
+          console.error('Load more error:', error);
+        } finally {
+          isLoading = false;
+        }
+      });
+
+      async function init() {
+        try {
+          const metadataList = await getMosaicList(pageNumber, pageSize);
+          const formattedData = reformatMetadata(metadataList);
+          createCards(formattedData);
+        } catch (error) {
+          console.error('Initialize error:', error);
+        }
+      }
+
+      init();
+    });
+  </script>
+</body>
+</html>
