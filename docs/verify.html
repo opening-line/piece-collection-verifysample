@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>証明書の確認</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        #result {
+            font-size: 24px;
+            font-weight: bold;
+            padding: 20px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="result"></div>
+    <script>
+    function getUrlParameter(name) {
+        name = name.replace(/[\[\]]/g, "\\$&");
+        const url = new URL(window.location.href);
+        const paramValue = url.searchParams.get(name);
+        return paramValue;
+    }
+
+    const pieceCollectionParam = getUrlParameter('piece_collection');
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const resultElement = document.getElementById('result');
+        
+        fetch(`https://pcoll-verify-certificate.azurewebsites.net/api/VerifyCertificate`, {
+            method: 'POST',
+            mode: "cors",
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: pieceCollectionParam,
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log(data);
+            if (data.result === "ok" && data.create_timestamp >= Math.floor(Date.now() / 1000) - 600) {
+                resultElement.textContent = 'OK';
+                resultElement.style.backgroundColor = 'green';
+                resultElement.style.color = 'white';
+            } else {
+                resultElement.textContent = 'NG';
+                resultElement.style.backgroundColor = 'red';
+                resultElement.style.color = 'white';
+            }
+        })
+        .catch(error => {
+            console.error('エラー:', error);
+            resultElement.textContent = 'NG';
+            resultElement.style.backgroundColor = 'red';
+            resultElement.style.color = 'white';
+        });
+    });
+    </script>
+</body>
+</html>
