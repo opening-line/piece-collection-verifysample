@@ -21,11 +21,85 @@
       margin-top: 10px;
     }
   </style>
+  <script>
+
+    async function checkApiStatus(data) {
+      const url = 'https://pcoll-verify-certificate.azurewebsites.net/api/VerifyCertificate';  // api
+      try {
+        const response = await fetch(url, {
+          method: 'POST', // POSTメソッドを指定
+          headers: {
+            'Content-Type': 'application/json' // JSON形式で送信
+          },
+          body: JSON.stringify(data) // データをJSON文字列に変換
+        });
+
+        if (response.ok) {
+          document.getElementById('button').style.display = 'none';  // 元のボタンを非表示
+          messageElement = Object.assign(document.createElement('p'), { textContent: "証明書保有確認 OK" })  //HTMLに表示
+          document.body.appendChild(messageElement);
+
+        } else {
+          document.getElementById('button').style.display = 'none';  // 元のボタンを非表示
+          messageElement = Object.assign(document.createElement('p'), { textContent: "不正な署名です。" })  //HTMLに表示
+          document.body.appendChild(messageElement);
+
+        }
+      } catch (error) {
+        console.error('No response from API:', error);
+      }
+    }
+
+    function handlePageLoad() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const isParams = urlParams.get('piece_collection');
+      if (isParams) {
+        let jsonData;
+        try {
+          jsonData = JSON.parse(decodeURIComponent(isParams));  // JSONデータをパース
+        } catch (e) {
+          console.error("JSONのパースに失敗しました:", e);
+          return;
+        }        
+        if (!jsonData.hasOwnProperty('pub_key')) {  // pub_keyが存在するか確認
+          document.getElementById('button').style.display = 'none';  // 元のボタンを非表示
+          messageElement = Object.assign(document.createElement('p'), { textContent: "PieceCollectionのアカウントを保有していないブラウザです。" })  //HTMLに表示
+          document.body.appendChild(messageElement);
+        } else {
+          if (!jsonData.hasOwnProperty('signature')) {
+            document.getElementById('button').style.display = 'none';  // 元のボタンを非表示
+            messageElement = Object.assign(document.createElement('p'), { textContent: "証明書を保有していないアカウントです。" })  //HTMLに表示
+            document.body.appendChild(messageElement);
+          } else {
+            const data = {
+              pub_key: jsonData.pub_key,
+              payload: jsonData.payload,
+              signature: jsonData.signature
+            };
+            checkApiStatus(data);
+          }
+        }
+      }
+    }
+
+    function setVerifyLink() {
+      const timestamp = Math.floor(Date.now() / 1000); // 現在のタイムスタンプを取得
+      const callbackUrl = encodeURIComponent("https://opening-line.github.io/piece-collection-verifysample");
+      document.getElementById('verifyLink').href = `https://dev.p-coll.com/verify/1626ECBA07530945?payload={"mosaic_id":"1626ECBA07530945","verifier":"OpeningLine","create_timestamp":${timestamp}}&callback_url=https://opening-line.github.io/piece-collection-verifysample`;
+    }
+  
+    window.onload = function() {
+      handlePageLoad();
+      document.getElementById('verifyLink').onclick = setVerifyLink;
+    }
+
+  </script>
 </head>
 <body>
-  <button>証明書の<br>確認ボタン</button>
-  <input type="text" placeholder="署名入力フォーム">
-  <button>確認する<br>ボタン</button>
-  <pre>&lt;a&gt;サンプルコード&lt;/a&gt;</pre>
+  <p id="button">
+    <a id="verifyLink" href="#">
+      <button>証明書の<br>確認ボタン</button>
+    </a>
+  </p>
 </body>
 </html>
