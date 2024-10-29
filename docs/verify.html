@@ -7,12 +7,10 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
             margin: 0;
             background-color: #f0f0f0;
+            min-height: 100svh;
+            padding: 20px 0;
         }
         .container {
             display: flex;
@@ -20,7 +18,8 @@
             align-items: center;
             width: 80%;
             max-width: 600px;
-            padding: 0 20px;
+            margin: 0 auto;
+            padding: 20px;
         }
         #result {
             font-size: 24px;
@@ -32,10 +31,15 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            margin: 0 auto;
+            margin: 0 auto 20px;
         }
         #additionalInfo {
-            margin-top: 20px;
+            margin: 20px 0;
+            text-align: center;
+            width: 100%;
+        }
+        #certificateDetails {
+            width: 100%;
             text-align: center;
         }
         #errorMessage {
@@ -54,10 +58,6 @@
             font-size: 20px;
             font-weight: bold;
             margin: 15px 0;
-        }
-        .certificate-description {
-            margin: 10px 0;
-            line-height: 1.5;
         }
     </style>
 </head>
@@ -104,7 +104,7 @@
                 image: imageData.data[0] ? utf8decoder.decode(hexToUint8(imageData.data[0].metadataEntry.value)) : ''
             };
         } catch (error) {
-            console.error('メタデータの取得に失敗しました:', error);
+            console.error('メタ���ータの取得に失敗しました:', error);
             return null;
         }
     }
@@ -139,12 +139,10 @@
                     <p>証明書ID: ${data.mosaic_id}</p>
                 `;
 
-                // 証明書のメタデータを取得して表示
                 const metadata = await fetchCertificateMetadata(data.mosaic_id);
                 if (metadata) {
                     certificateDetailsElement.innerHTML = `
                         <h2 class="certificate-title">${metadata.name}</h2>
-                        <p class="certificate-description">${metadata.description}</p>
                         <img src="${metadata.image}" alt="${metadata.name}" class="certificate-image">
                     `;
                 }
