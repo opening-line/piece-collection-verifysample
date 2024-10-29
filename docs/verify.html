@@ -44,12 +44,28 @@
             margin-top: 10px;
             text-align: center;
         }
+        .certificate-image {
+            max-width: 100%;
+            margin-top: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .certificate-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin: 15px 0;
+        }
+        .certificate-description {
+            margin: 10px 0;
+            line-height: 1.5;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div id="result"></div>
         <div id="additionalInfo"></div>
+        <div id="certificateDetails"></div>
         <div id="errorMessage"></div>
     </div>
     <script>
@@ -62,9 +78,41 @@
 
     const pieceCollectionParam = getUrlParameter('piece_collection');
 
+    async function fetchCertificateMetadata(mosaicId) {
+        const NODE = "https://sym-main-appgw.opening-line.jp:3001";
+        const MAIN_ADDRESS = "NC2MGJNTF6W2C7Q6HNNOTRN4JWB42JOQGCSBUOA";
+
+        try {
+            const [nameData, descriptionData, imageData] = await Promise.all([
+                fetch(`${NODE}/metadata?targetId=${mosaicId}&targetAddress=${MAIN_ADDRESS}&scopedMetadataKey=9E0317B2A9112EFF&metadataType=1`).then(res => res.json()),
+                fetch(`${NODE}/metadata?targetId=${mosaicId}&targetAddress=${MAIN_ADDRESS}&scopedMetadataKey=E286DE93DF07FD18&metadataType=1`).then(res => res.json()),
+                fetch(`${NODE}/metadata?targetId=${mosaicId}&targetAddress=${MAIN_ADDRESS}&scopedMetadataKey=BF0CC7A97EE003E2&metadataType=1`).then(res => res.json())
+            ]);
+
+            const utf8decoder = new TextDecoder();
+            const hexToUint8 = (hex) => {
+                const arr = [];
+                for (let i = 0; i < hex.length; i += 2) {
+                    arr.push(parseInt(hex.substr(i, 2), 16));
+                }
+                return new Uint8Array(arr);
+            };
+
+            return {
+                name: nameData.data[0] ? utf8decoder.decode(hexToUint8(nameData.data[0].metadataEntry.value)) : '',
+                description: descriptionData.data[0] ? utf8decoder.decode(hexToUint8(descriptionData.data[0].metadataEntry.value)) : '',
+                image: imageData.data[0] ? utf8decoder.decode(hexToUint8(imageData.data[0].metadataEntry.value)) : ''
+            };
+        } catch (error) {
+            console.error('メタデータの取得に失敗しました:', error);
+            return null;
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         const resultElement = document.getElementById('result');
         const additionalInfoElement = document.getElementById('additionalInfo');
+        const certificateDetailsElement = document.getElementById('certificateDetails');
         const errorMessageElement = document.getElementById('errorMessage');
         
         fetch(`https://pcoll-verify-certificate.azurewebsites.net/api/VerifyCertificate`, {
@@ -76,7 +124,7 @@
             body: pieceCollectionParam,
         })
         .then(response => response.json())
-        .then(data => {
+        .then(async data => {
             console.log(data);            
             if (data.result === "ok") {
                 resultElement.textContent = 'OK';
@@ -90,6 +138,16 @@
                     <p>QRコード生成日時: ${formattedDate}</p>
                     <p>証明書ID: ${data.mosaic_id}</p>
                 `;
+
+                // 証明書のメタデータを取得して表示
+                const metadata = await fetchCertificateMetadata(data.mosaic_id);
+                if (metadata) {
+                    certificateDetailsElement.innerHTML = `
+                        <h2 class="certificate-title">${metadata.name}</h2>
+                        <p class="certificate-description">${metadata.description}</p>
+                        <img src="${metadata.image}" alt="${metadata.name}" class="certificate-image">
+                    `;
+                }
             } else {
                 resultElement.textContent = 'NG';
                 resultElement.style.backgroundColor = 'red';
