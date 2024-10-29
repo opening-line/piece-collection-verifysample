@@ -1,22 +1,21 @@
 # Docs for the Azure Web Apps Deploy action: https://github.com/azure/functions-action
 # More GitHub Actions for Azure: https://github.com/Azure/actions
+
 name: Build and deploy Node.js project to Azure Function App - pcoll-verify-certificate
 
 on:
   push:
     branches:
       - main
-    paths:
-      - 'verify-api/**'  # verify-apiフォルダ配下の変更のみをトリガーとする
   workflow_dispatch:
 
 env:
-  AZURE_FUNCTIONAPP_PACKAGE_PATH: './verify-api' # set this to the path to your function app project
-  NODE_VERSION: '18.x' # set this to the node version to use (supports 8.x, 10.x, 12.x)
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: '.' # set this to the path to your web app project, defaults to the repository root
+  NODE_VERSION: '20.x' # set this to the node version to use (supports 8.x, 10.x, 12.x)
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     steps:
       - name: 'Checkout GitHub Action'
         uses: actions/checkout@v4
@@ -27,7 +26,7 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: 'Resolve Project Dependencies Using Npm'
-        shell: pwsh
+        shell: bash
         run: |
           pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
           npm install
@@ -35,16 +34,19 @@ jobs:
           npm run test --if-present
           popd
 
+      - name: Zip artifact for deployment
+        run: zip release.zip ./* -r
+
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: node-app
-          path: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+          path: release.zip
 
   deploy:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     needs: build
-
+    
     permissions:
       id-token: write #This is required for requesting the JWT
 
@@ -54,12 +56,15 @@ jobs:
         with:
           name: node-app
 
+      - name: Unzip artifact for deployment
+        run: unzip release.zip
+      
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_578CF3FD221A4859B3EFCBFFC0F999AA }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_41746FF95F4C459683654FDB76FC04FF }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_96A5D646BA644760B6944646F9405E14 }}
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_DED685C458914B0E8D337B7C902EF276 }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_3019BDBE450A4CD3B06E52AD591DD5C4 }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_67270A8016FD4C7F82E3BFAA16375DFE }}
 
       - name: 'Run Azure Functions Action'
         uses: Azure/functions-action@v1
@@ -67,4 +72,5 @@ jobs:
         with:
           app-name: 'pcoll-verify-certificate'
           slot-name: 'Production'
-          package: '.'
+          package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+          
